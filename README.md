@@ -15,15 +15,11 @@
 - Ansible (устанавливается автоматически)
 - Права sudo
 # Просмотр групп
-```bash
+
 sudo ldapsearch -x -LLL -b "ou=Groups,dc=example,dc=com"
-<p align="center">
-<img src="ldap-groups.png" width="700">
-</p>
+
+![Запуск playbook](playbook-run.png)
 
 # Просмотр пользователей
-```bash
 sudo ldapsearch -x -LLL -b "ou=People,dc=example,dc=com"
-<p align="center">
-<img src="screenshots/ldap-users.png" width="700">
-</p>
+![LDAP Users](ldap-users.png "Пользователи LDAP"){ width=600 }
