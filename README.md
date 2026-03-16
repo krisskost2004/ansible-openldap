@@ -14,12 +14,11 @@
 - Ubuntu LTS (20.04/22.04/24.04)
 - Ansible (устанавливается автоматически)
 - Права sudo
+  
 # Просмотр групп
-
 sudo ldapsearch -x -LLL -b "ou=Groups,dc=example,dc=com"
-
-![Запуск playbook](playbook-run.png)
+![LDAP Users](ldap-groups.png "Пользователи LDAP")
 
 # Просмотр пользователей
 sudo ldapsearch -x -LLL -b "ou=People,dc=example,dc=com"
-![LDAP Users](ldap-users.png "Пользователи LDAP"){ width=600 }
+![LDAP Users](ldap-users.png "Пользователи LDAP")
