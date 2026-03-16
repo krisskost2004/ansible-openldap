@@ -6,15 +6,18 @@
 -  Настройка пароля администратора LDAP
 -  Создание домена (example.com) и организации (Example Inc)
 -  Создание базовой структуры каталога (ou=People, ou=Groups)
--  Добавление 2 пользователей: Ivan Ivanov (ivanov), Petr Petrov (petrov)
--  Добавление 2 групп: developers (gid=10001), managers (gid=10002)
+-  Добавление 2 пользователей: ivanov, petrov
+-  Добавление 2 групп: developers, managers
 -  Назначение пользователей в группы
 
 ## Требования для запуска
-- Ubuntu LTS (20.04/22.04/24.04)
-- Ansible (устанавливается автоматически)
+- Ubuntu LTS
+- Ansible
 - Права sudo
   
+# Запуск установки
+ansible-playbook -i inventory.ini playbook.yml
+
 # Просмотр групп
 sudo ldapsearch -x -LLL -b "ou=Groups,dc=example,dc=com"
 ![LDAP Users](ldap-groups.png "Пользователи LDAP")
