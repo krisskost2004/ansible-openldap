@@ -1,0 +1,16 @@
+dn: uid={{ item.username }},ou=People,{{ ldap_basedn }}
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: person
+objectClass: organizationalPerson
+uid: {{ item.username }}
+cn: {{ item.firstname }} {{ item.lastname }}
+sn: {{ item.lastname }}
+givenName: {{ item.firstname }}
+mail: {{ item.email }}
+userPassword: {{ item.password }}
+loginShell: /bin/bash
+uidNumber: {{ 1001 + idx }}
+gidNumber: 10001
+homeDirectory: /home/{{ item.username }}

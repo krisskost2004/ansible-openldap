@@ -1,0 +1,134 @@
+- name: Установка и настройка OpenLDAP сервера на Ubuntu
+  hosts: ldap_servers
+  connection: local
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+
+  tasks:
+    - name: Обновление кэша пакетов
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Установка пакетов OpenLDAP и утилит
+      apt:
+        name:
+          - slapd
+          - ldap-utils
+        state: present
+
+    - name: Остановка slapd для перенастройки
+      systemd:
+        name: slapd
+        state: stopped
+      ignore_errors: yes
+
+    - name: Очистка старых конфигураций (если есть)
+      command: dpkg --purge slapd
+      ignore_errors: yes
+
+    - name: Установка пароля администратора через debconf
+      debconf:
+        name: slapd
+        question: "{{ item.question }}"
+        value: "{{ item.value }}"
+        vtype: "{{ item.vtype }}"
+      with_items:
+        - { question: 'slapd/password1', value: '{{ ldap_admin_password }}', vtype: 'password' }
+        - { question: 'slapd/password2', value: '{{ ldap_admin_password }}', vtype: 'password' }
+        - { question: 'slapd/domain', value: '{{ ldap_domain }}', vtype: 'string' }
+        - { question: 'slapd/allow_ldap_v1', value: 'false', vtype: 'boolean' }
+        - { question: 'shared/organization', value: '{{ ldap_organization }}', vtype: 'string' }
+        - { question: 'slapd/backend', value: 'MDB', vtype: 'string' }
+        - { question: 'slapd/purge_database', value: 'true', vtype: 'boolean' }
+
+    - name: Переустановка slapd с новыми параметрами
+      apt:
+        name: slapd
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Запуск и включение slapd
+      systemd:
+        name: slapd
+        state: started
+        enabled: yes
+
+    - name: Создание временной директории для LDIF файлов
+      file:
+        path: /tmp/ldap_ldif
+        state: directory
+
+    - name: Создание LDIF файла с базовой структурой
+      template:
+        src: base_structure.ldif.j2
+        dest: /tmp/ldap_ldif/base_structure.ldif
+
+    - name: Создание LDIF файлов для групп
+      template:
+        src: group.ldif.j2
+        dest: "/tmp/ldap_ldif/group_{{ item.name }}.ldif"
+      with_items: "{{ ldap_groups }}"
+
+    - name: Создание LDIF файлов для пользователей
+      template:
+        src: user.ldif.j2
+        dest: "/tmp/ldap_ldif/user_{{ item.username }}.ldif"
+      loop: "{{ ldap_users }}"
+      loop_control:
+        index_var: idx
+
+    - name: Добавление базовой структуры (ou=People, ou=Groups)
+      command: >
+        ldapadd -x -D "cn=admin,{{ ldap_basedn }}"
+        -w {{ ldap_admin_password }}
+        -f /tmp/ldap_ldif/base_structure.ldif
+      register: base_add_result
+      ignore_errors: yes
+
+    - name: Вывод результата добавления базовой структуры
+      debug:
+        var: base_add_result
+
+    - name: Добавление групп в LDAP
+      command: >
+        ldapadd -x -D "cn=admin,{{ ldap_basedn }}"
+        -w {{ ldap_admin_password }}
+        -f /tmp/ldap_ldif/group_{{ item.name }}.ldif
+      with_items: "{{ ldap_groups }}"
+      register: group_add_result
+      ignore_errors: yes
+
+    - name: Добавление пользователей в LDAP
+      command: >
+        ldapadd -x -D "cn=admin,{{ ldap_basedn }}"
+        -w {{ ldap_admin_password }}
+        -f /tmp/ldap_ldif/user_{{ item.username }}.ldif
+      with_items: "{{ ldap_users }}"
+      register: user_add_result
+      ignore_errors: yes
+
+    - name: Проверка добавленных пользователей
+      command: >
+        ldapsearch -x -LLL -b "ou=People,{{ ldap_basedn }}"
+        -D "cn=admin,{{ ldap_basedn }}"
+        -w {{ ldap_admin_password }}
+      register: ldap_users_result
+
+    - name: Вывод результатов поиска пользователей
+      debug:
+        var: ldap_users_result.stdout_lines
+
+    - name: Проверка добавленных групп
+      command: >
+        ldapsearch -x -LLL -b "ou=Groups,{{ ldap_basedn }}"
+        -D "cn=admin,{{ ldap_basedn }}"
+        -w {{ ldap_admin_password }}
+      register: ldap_groups_result
+
+    - name: Вывод результатов поиска групп
+      debug:
+        var: ldap_groups_result.stdout_lines
